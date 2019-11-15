@@ -42,6 +42,7 @@ All Global variable names shall start with "G_UserApp1"
 ***********************************************************************************************************************/
 /* New variables */
 volatile u32 G_u32UserApp1Flags;                       /* Global state flags */
+volatile int G_UserApp1password[11] ={1,2,3,-1};                       /* Password to match */
 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -92,6 +93,14 @@ void UserApp1Initialize(void)
   if( 1 )
   {
     UserApp1_StateMachine = UserApp1SM_Idle;
+    LedOff(WHITE);
+    LedOff(PURPLE);
+    LedOff(BLUE);
+    LedOff(CYAN);
+    LedOff(GREEN);
+    LedOff(YELLOW);
+    LedOff(ORANGE);
+    LedOff(RED);
   }
   else
   {
@@ -136,7 +145,73 @@ State Machine Function Definitions
 /* Wait for ??? */
 static void UserApp1SM_Idle(void)
 {
-
+  static int password[10]; //stores the vaules of the buttons passed 
+  static int point = 0; //stores the location of the array 
+  static int clockCounter = 0; //counter for blinking 
+  static int currentButtonPressed = 0;
+  static int lastButtonPressed = 0;
+  
+   if(IsButtonPressed(BUTTON0)){
+    currentButtonPressed = 1;
+  }
+     
+  if(IsButtonPressed(BUTTON1)){
+    currentButtonPressed = 2;
+  }
+      
+  if(IsButtonPressed(BUTTON2)){
+    currentButtonPressed = 3;
+  }
+  if(point == -1){
+    if(clockCounter == 500){
+      LedOn(RED);
+      clockCounter = 0;
+    }
+    if(clockCounter == 250){
+      LedOff(RED);
+    }
+    clockCounter++;
+  }
+  else if(point == -2){
+    if(clockCounter == 500){
+      LedOn(GREEN);
+      clockCounter = 0;
+    }
+    if(clockCounter == 250){
+      LedOff(GREEN);
+    }
+    clockCounter++;
+  }
+  else if(lastButtonPressed != currentButtonPressed){
+   LedOn(RED);
+   if(IsButtonPressed(BUTTON0)){
+    password[point] = 1;
+    point++;
+    lastButtonPressed = 1;
+  }
+     
+  if(IsButtonPressed(BUTTON1)){
+    password[point] = 2;
+    point++;
+    lastButtonPressed = 2;
+  }
+      
+  if(IsButtonPressed(BUTTON2)){
+    password[point] = 3;
+    point++;
+    lastButtonPressed = 3;
+  }
+  
+   if(IsButtonPressed(BUTTON3)){
+    for(int i = 0; G_UserApp1password[i] != -1; i++){
+      if(password[i] != G_UserApp1password[i]){
+        point = -1;  
+        break;
+      }
+    }
+    point = -2;
+  }
+  } 
 } /* end UserApp1SM_Idle() */
     
 
