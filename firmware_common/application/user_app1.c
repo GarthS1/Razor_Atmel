@@ -30,7 +30,6 @@ All Global variable names shall start with "G_UserApp1"
 ***********************************************************************************************************************/
 /* New variables */
 volatile u32 G_u32UserApp1Flags;                       /* Global state flags */
-volatile int G_UserApp1password[11];       /* Password to match where 0 is the end */
 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -67,26 +66,22 @@ void reset(int* reset, int password[])
     ButtonAcknowledge(BUTTON1);
     ButtonAcknowledge(BUTTON2);
     ButtonAcknowledge(BUTTON3);
-    *reset = 0;
-    for(int i = 0; password[i] != 0; i++)
+    *reset = 0; /* goes back to zero */
+    for(int i = 0; password[i] != 0; i++) /* resets password array */
     {
       password[i] = 0;
     }
   }
-}
+} /* end of reset */
 
 /* when trying to enter a password */
-void enter(int *state)
+void enter(int *state, const int password[])
 {
-	static int password[10]; //stores the vaules of the buttons passed 
-	static int point = 0; //stores the location of the array 
-  static int clockCounter = 0; //counter for blinking 
+	static int user_input[10]; /* stores the vaules of the buttons passed */
+	static int point = 0; /* stores the location of the array */
+  static int clockCounter = 0; /*counter for blinking */
 	
-  LCDCommand(LCD_CLEAR_CMD);
-	static u8 au8Message[] = "ENTERING A PASSWORD   ";
-  LCDMessage(LINE1_START_ADDR, au8Message);
-	
-  if(point == -1)
+  if(point == -1) /* when user enters wrong password */
   {
     if(clockCounter == 1000)
     {
@@ -98,9 +93,10 @@ void enter(int *state)
       LedOff(RED);
     }
     clockCounter++;
-    reset(&point, password);
+    reset(&point, user_input); /* checks for any button pressed to end cycle */
   }
-  else if(point == -2)
+	
+  else if(point == -2) /* when user enters correct password */
   {
     if(clockCounter == 1000)
     {
@@ -113,10 +109,10 @@ void enter(int *state)
     }
     
     clockCounter++;
-    LedOff(RED);
-    reset(&point, password);
+    reset(&point, user_input); /* checks for any button pressed to end cycle */
   }
-  else
+	
+  else /* user entering password */
   {
 		LedOn(RED);
     LedOff(GREEN); 
@@ -124,21 +120,21 @@ void enter(int *state)
     if(WasButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON0))
     {
 			ButtonAcknowledge(BUTTON0);
-      password[point] = 1;
+      user_input[point] = 1;
       point++;
 		}   
    
     if(WasButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON1))
     {
       ButtonAcknowledge(BUTTON1);
-      password[point] = 2;
+      user_input[point] = 2;
       point++;
     }
       
     if(WasButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON2) )
     {
       ButtonAcknowledge(BUTTON2);
-      password[point] = 3;
+      user_input[point] = 3;
       point++;
     }
   
@@ -147,43 +143,41 @@ void enter(int *state)
 			ButtonAcknowledge(BUTTON3);
       for(int i = 0; i  < 10; i++)
       {
-				if(password[i] != G_UserApp1password[i])
+				if(user_input[i] != password[i]) /* checks that password matches */
         {
 					point = -1;  
 					break;
 				}
 				point = -2;
+				LedOff(RED);
 			}
     }
   }
 } /* end of enter */	
 
 /* when trying to set a password */
-void set(int* state)
+void set(int* state, int password[])
 {
-  static u8 au8Message[] = "SETTING A PASSWORD     ";
 	static int point = 0;
-  
-  LCDMessage(LINE1_START_ADDR, au8Message);
 	
 	if(WasButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON0))
   {
 		ButtonAcknowledge(BUTTON0);
-		G_UserApp1password[point] = 1;
+		password[point] = 1;
     point++;
 	}   
    
   if(WasButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1);
-    G_UserApp1password[point] = 2;
+    password[point] = 2;
     point++;
   }
       
   if(WasButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON2) )
   {
     ButtonAcknowledge(BUTTON2);
-    G_UserApp1password[point] = 3;
+    password[point] = 3;
     point++;
   }
   
@@ -192,8 +186,9 @@ void set(int* state)
 	  ButtonAcknowledge(BUTTON3);
 	  *state = 1;
 	  point = 0;
+		LCDCommand(LCD_CLEAR_CMD);
   }
-}
+}  /* end of set */ 
 	
 	
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -270,15 +265,26 @@ State Machine Function Definitions
 /*-------------------------------------------------------------------------------------------------------------------*/
 static void UserApp1SM_Idle(void)
 {
-	static int state = 0;  //keeps track of which state the board is in 
+	static int state = 0;  /*keeps track of which state the board is in */
+	static int password[11]; /* Password to match where 0 is the end */
 	
-	if( state == 0 )
+	if( state == 0 ) /* Setting a password */
 	{
-		set(&state);
+		static u8 au8Message[] = "SETTING A PASSWORD   ";
+		
+		set(&state, password);
+		LCDMessage(LINE1_START_ADDR, au8Message);
 	}
-	else
+	else if( state == 1 ) /* User trying to enter password */
 	{
-		enter(&state);
+		static u8 au8Message[] = "ENTERING A PASSWORD   ";
+		
+		enter(&state, password);
+		LCDMessage(LINE1_START_ADDR, au8Message);
+	}
+	else /* If tries to reach unknown state */
+	{
+		exit(1);
 	}
 
 } /* end UserApp1SM_Idle() */

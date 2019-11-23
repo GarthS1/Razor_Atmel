@@ -37,9 +37,9 @@ Function Declarations
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Public functions                                                                                                   */
 /*--------------------------------------------------------------------------------------------------------------------*/
-void reset(int* reset, int password[]);
-void enter(int* state);
-void set(int* state);
+void reset(int* reset, int user_input[]);
+void enter(int* state, const int password[]);
+void set(int* state, int password[]);
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Protected functions                                                                                                */
