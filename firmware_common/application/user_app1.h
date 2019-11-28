@@ -38,8 +38,7 @@ Function Declarations
 /* Public functions                                                                                                   */
 /*--------------------------------------------------------------------------------------------------------------------*/
 void reset(int* reset, int user_input[]);
-void enter(int* state, const int password[]);
-void set(int* state, int password[]);
+
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Protected functions                                                                                                */
@@ -55,10 +54,12 @@ void UserApp1RunActiveState(void);
 
 /***********************************************************************************************************************
 State Machine Declarations
-***********************************************************************************************************************/
-static void UserApp1SM_Idle(void);    
+***********************************************************************************************************************/  
+static void UserApp1SM_Error(void); 
 
-static void UserApp1SM_Error(void);         
+static void UserApp1SM_setPassword(void);
+static void UserApp1SM_enterPassword(void); 
+static void UserApp1SM_lockedState(void);       
 
 
 #endif /* __USER_APP1_H */
