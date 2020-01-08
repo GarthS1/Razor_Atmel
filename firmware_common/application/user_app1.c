@@ -182,6 +182,16 @@ static void UserApp1SM_enterPassword(void)
 		/* when user has entered password wrong three times */
 		if(failures == 3)
 		{
+			point = 0;
+			failures = 2;
+			
+			LCDCommand(LCD_CLEAR_CMD);
+			static u8 au8Message[] = "WRONG PASSWORD"; 
+			static u8 au8Message1[] = "TRY AGAIN IN "; 
+			LCDMessage(LINE1_START_ADDR, au8Message);
+			LCDMessage(LINE2_START_ADDR, au8Message1);
+			
+			/* changes the state to locked state */
 			UserApp1_StateMachine = UserApp1SM_lockedState;
 		}
 	}
@@ -198,6 +208,7 @@ static void UserApp1SM_enterPassword(void)
       LedOff(GREEN);
     }
     
+		failures = 0; /* resets the fail counter */
     clockCounter++;
     reset(&point, user_input); /* checks for any button pressed to end cycle */
   }
@@ -279,7 +290,7 @@ static void UserApp1SM_setPassword(void)
 		
 		/* change the message on the board */
 		LCDCommand(LCD_CLEAR_CMD);
-		for(int i = 0; i < 1000; i++) {}
+		for(int i = 0; i < 1000; i++) {} //delay loop 
 		static u8 au8Message[] = "ENTERING A PASSWORD   ";
 		static u8 au8Message1[] = "1     2	    	3 ENTER"; 
 		LCDMessage(LINE1_START_ADDR, au8Message);
@@ -293,9 +304,36 @@ static void UserApp1SM_setPassword(void)
 /* stops the user from trying any more passwords */
 static void UserApp1SM_lockedState(void)
 {
+	static int locked_state_attempts = 1;  /* tracks how many times locked state has been entered */
 	static int clockCounter = 0; /*counter for blinking */
+	int wait_time = locked_state_attempts * 10000;  /* counts how long the system will remained in locked state */
 	
-	if(clockCounter == 1000)
+	if(clockCounter % 1000)
+	{
+		static u8 au8Message1[] = "TRY AGAIN IN "; 
+		LCDMessage(LINE2_START_ADDR, au8Message1);
+		LCDMessage(LINE2_START_ADDR + 13, (u8*) ((wait_time - clockCounter) / 10000));
+		LCDMessage(LINE2_START_ADDR + 14, (u8*) ((wait_time - clockCounter) / 10000));
+	}
+			
+	if(clockCounter == wait_time)
+	{
+		locked_state_attempts++;
+		clockCounter = 0;
+		
+		/* change the message on the board */
+		LCDCommand(LCD_CLEAR_CMD);
+		for(int i = 0; i < 1000; i++) {} //delay loop 
+		static u8 au8Message[] = "ENTERING A PASSWORD   ";
+		static u8 au8Message1[] = "1     2	    	3 ENTER"; 
+		LCDMessage(LINE1_START_ADDR, au8Message);
+		LCDMessage(LINE2_START_ADDR, au8Message1);
+		
+		/* change the state to entering password */
+		UserApp1_StateMachine = UserApp1SM_enterPassword;	
+	}
+		
+	if(clockCounter % 1000 == 0 & clockCounter <= 5000)
   {		
     LedOff(WHITE);
     LedOff(PURPLE);
@@ -305,9 +343,14 @@ static void UserApp1SM_lockedState(void)
     LedOff(YELLOW);
     LedOff(ORANGE);
     LedOff(RED);
-    clockCounter = 0;
+		
+		if(clockCounter == 5000)
+		{
+			LedOn(ORANGE);
+		}
   }
-  if(clockCounter == 500)
+	
+  if(clockCounter % 500 == 0 & !(clockCounter % 1000 == 0) & clockCounter <= 5000)
   {
     LedOn(WHITE);
     LedOn(PURPLE);
@@ -318,6 +361,7 @@ static void UserApp1SM_lockedState(void)
     LedOn(ORANGE);
     LedOn(RED);
   }
+	
 	clockCounter++;
 }
 	
