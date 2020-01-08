@@ -31,7 +31,8 @@ All Global variable names shall start with "G_UserApp1"
 ***********************************************************************************************************************/
 /* New variables */
 volatile u32 G_u32UserApp1Flags;                       /* Global state flags */
-volatile int G_password[11];                           /* correct password */
+volatile int G_intUserApp1password[11];                /* Correct password */
+volatile int G_intUserApp1sound; 											 /* Toggle for sound */ 
 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -48,7 +49,6 @@ Global variable definitions with scope limited to this local application.
 Variable names shall start with "UserApp1_" and be declared as static.
 ***********************************************************************************************************************/
 static fnCode_type UserApp1_StateMachine;            /* The state machine function pointer */
-//static u32 UserApp1_u32Timeout;                      /* Timeout counter used across states */
 
 
 /**********************************************************************************************************************
@@ -59,22 +59,91 @@ Function Definitions
 /* Public functions                                                                                                   */
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-/* resets the password array for next attempt*/
-void reset(int* reset, int password[])
-{	
-  if(WasButtonPressed(BUTTON0) || WasButtonPressed(BUTTON1) || WasButtonPressed(BUTTON2) || WasButtonPressed(BUTTON3) && !IsButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON3) )
+/* Displays the LCD for setting password */
+void display_setting(void)
+{
+	LCDCommand(LCD_CLEAR_CMD);
+	static u8 au8Message[] = "SETTING A PASSWORD   "; 
+	static u8 au8Message1[] = "1     2	    	3   SET"; 
+	LCDMessage(LINE1_START_ADDR, au8Message);
+	LCDMessage(LINE2_START_ADDR, au8Message1);
+} /* end of display_setting */ 
+
+/* Displays the LCD for entering password */
+void display_entering(void)
+{
+	LCDCommand(LCD_CLEAR_CMD);
+	static u8 au8Message[] = "ENTERING A PASSWORD   ";
+	static u8 au8Message1[] = "1     2	    	3 ENTER"; 
+	LCDMessage(LINE1_START_ADDR, au8Message);
+	LCDMessage(LINE2_START_ADDR, au8Message1);
+} /* end of display_entering 
+
+/* Displays the LCD for right password */
+void display_right(void)
+{
+	LCDCommand(LCD_CLEAR_CMD);
+	static u8 au8Message[] = "CORRECT PASSWORD ";
+	static u8 au8Message1[] = "1 CHANGE     3 LOCK"; 
+	LCDMessage(LINE1_START_ADDR, au8Message);
+	LCDMessage(LINE2_START_ADDR, au8Message1);
+} /* end of display_right
+
+/* Displays the LCD for wrong password */
+void display_wrong(void)
+{
+	LCDCommand(LCD_CLEAR_CMD);
+	static u8 au8Message[] = "WRONG PASSWORD ";
+	static u8 au8Message1[] = "PRESS ANY BUTTON"; 
+	LCDMessage(LINE1_START_ADDR, au8Message);
+	LCDMessage(LINE2_START_ADDR, au8Message1);
+} /* end of display_wrong */
+
+/* Displays the LCD for the locked state */
+void display_locked(int wait_time, int clockCounter)
+{
+	if(clockCounter == 0)
+	{
+		LCDCommand(LCD_CLEAR_CMD);
+		static u8 au8Message1[] = "LOCKED"; 
+		LCDMessage(LINE1_START_ADDR, au8Message1);
+		static u8 au8Message[] = "TRY AGAIN IN "; 
+		LCDMessage(LINE2_START_ADDR, au8Message);
+	}
+	
+	if(clockCounter % 1000 == 0 && clockCounter != 0)
+	{
+		int first_digit = ((wait_time - clockCounter) / 100000) + 48;
+		int second_digit = ((wait_time - clockCounter) / 10000) + 48 - ((wait_time - clockCounter) / 100000) * 10;
+		int third_digit = ((wait_time - clockCounter) / 1000) + 48 - ((wait_time - clockCounter) / 10000) * 10 ;
+		u8 au8Message2[] = {first_digit, second_digit, third_digit, 32, 32, 32 ,32 ,32 ,32}; /* 32 is blank space is ascii */
+		LCDMessage(LINE2_START_ADDR + 13, au8Message2);
+	}
+} /* end of display_locked */
+
+/* Resets array */
+void reset(volatile int array[])
+{
+	for(int i = 0; i < 10; i++)
+	{
+		array[i] = 0;
+	}
+} /* end of reset */
+
+/* Checks for button pressed */
+int button_pressed(void)
+{
+	if(WasButtonPressed(BUTTON0) || WasButtonPressed(BUTTON1) || WasButtonPressed(BUTTON2) || WasButtonPressed(BUTTON3) && !IsButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON3) )
   {
     ButtonAcknowledge(BUTTON0);
     ButtonAcknowledge(BUTTON1);
     ButtonAcknowledge(BUTTON2);
     ButtonAcknowledge(BUTTON3);
-    *reset = 0; /* goes back to zero */
-    for(int i = 0; password[i] != 0; i++) /* resets password array */
-    {
-      password[i] = 0;
-    }
-  }
-} /* end of reset */
+		return 1;
+	}
+return 0;
+} /* end of button_pressed */
+	
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Protected functions                                                                                                */
@@ -94,19 +163,12 @@ Promises:
 */
 void UserApp1Initialize(void)
 {
- 
   /* If good initialization, set state to Idle */
   if( 1 )
   {
 		/* set to setting password state */
     UserApp1_StateMachine = UserApp1SM_setPassword;
-		
-		/* change the message on the board */
-		LCDCommand(LCD_CLEAR_CMD);
-		static u8 au8Message[] = "SETTING A PASSWORD   "; 
-		static u8 au8Message1[] = "1     2	    	3   SET"; 
-		LCDMessage(LINE1_START_ADDR, au8Message);
-		LCDMessage(LINE2_START_ADDR, au8Message1);
+		display_setting();
 		
     LedOff(WHITE);
     LedOff(PURPLE);
@@ -158,107 +220,125 @@ State Machine Function Definitions
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 
-/* when trying to enter a password */
+/* Entering password */
 static void UserApp1SM_enterPassword(void)
 {
 	static int user_input[10]; /* stores the vaules of the buttons passed */
 	static int point = 0; /* stores the location of the array */
-  static int clockCounter = 0; /*counter for blinking */
-	static int failures = 0; /* counts the amounts of failed attempts */
 	
-  if(point == -1) /* when user enters wrong password */
+	LedOn(RED);
+  LedOff(GREEN);
+	LedOff(ORANGE);
+   
+  if(WasButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON0))
   {
-    if(clockCounter == 1000)
-    {
-      LedOn(RED);
-      clockCounter = 0;
-    }
-    if(clockCounter == 500)
-    {
-      LedOff(RED);
-    }
-    clockCounter++;
-    reset(&point, user_input); /* checks for any button pressed to end cycle */
-		
-		/* when user has entered password wrong three times */
-		if(failures == 3)
-		{
-			point = 0;
-			failures = 2;
-			
-			LCDCommand(LCD_CLEAR_CMD);
-			static u8 au8Message[] = "WRONG PASSWORD"; 
-			static u8 au8Message1[] = "TRY AGAIN IN "; 
-			LCDMessage(LINE1_START_ADDR, au8Message);
-			LCDMessage(LINE2_START_ADDR, au8Message1);
-			
-			/* changes the state to locked state */
-			UserApp1_StateMachine = UserApp1SM_lockedState;
-		}
-	}
-	
-  else if(point == -2) /* when user enters correct password */
+	  ButtonAcknowledge(BUTTON0);
+    user_input[point] = 1;
+    point++;
+	}   
+   
+  if(WasButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON1))
   {
-    if(clockCounter == 1000)
-    {
-      LedOn(GREEN);
-      clockCounter = 0;
-    }
-    if(clockCounter == 500)
-    {
-      LedOff(GREEN);
-    }
-    
-		failures = 0; /* resets the fail counter */
-    clockCounter++;
-    reset(&point, user_input); /* checks for any button pressed to end cycle */
+    ButtonAcknowledge(BUTTON1);
+    user_input[point] = 2;
+    point++;
   }
-	
-  else /* user entering password */
-  {
-		LedOn(RED);
-    LedOff(GREEN); 
-   
-    if(WasButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON0))
-    {
-			ButtonAcknowledge(BUTTON0);
-      user_input[point] = 1;
-      point++;
-		}   
-   
-    if(WasButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON1))
-    {
-      ButtonAcknowledge(BUTTON1);
-      user_input[point] = 2;
-      point++;
-    }
       
-    if(WasButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON2) )
-    {
-      ButtonAcknowledge(BUTTON2);
-      user_input[point] = 3;
-      point++;
-    }
+  if(WasButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON2) )
+  {
+    ButtonAcknowledge(BUTTON2);
+    user_input[point] = 3;
+    point++;
+  }
   
-    if(WasButtonPressed(BUTTON3) && !IsButtonPressed(BUTTON3))
+  if(WasButtonPressed(BUTTON3) && !IsButtonPressed(BUTTON3))
+  {
+		ButtonAcknowledge(BUTTON3);
+		point = 0;
+		LedOff(GREEN);
+		LedOff(RED);
+		
+		UserApp1_StateMachine = UserApp1SM_rightPassword;
+		display_right();
+    for(int i = 0; i < 10; i++)
     {
-			ButtonAcknowledge(BUTTON3);
-      for(int i = 0; i  < 10; i++)
+			if(user_input[i] != G_intUserApp1password[i]) /* checks that password matches */
       {
-				if(user_input[i] != G_password[i]) /* checks that password matches */
-        {
-					point = -1;
-					failures++;					
-					break;
-				}
-				point = -2;
-				LedOff(RED);
+				UserApp1_StateMachine = UserApp1SM_wrongPassword;
+				display_wrong();
 			}
-    }
+		}
+		reset(user_input);
   }
 } /* end of enter */	
 
-/* when trying to set a password */
+/* User entered wrong password */
+static void UserApp1SM_wrongPassword(void)
+{
+	static int clockCounter = 0; /* counter for blinking */ 
+	static int failures = 1; /* counter for failures */
+	
+	if(clockCounter == 1000)
+  {
+    LedOn(RED);
+    clockCounter = 0;
+  }
+  if(clockCounter == 500)
+  {
+    LedOff(RED);
+  }
+    
+	clockCounter++;
+	
+	/* checks for any button pressed to end cycle */
+	if(button_pressed() && failures != 3)
+	{
+		failures++;
+		
+		/* changes the state to entering password */
+		UserApp1_StateMachine = UserApp1SM_enterPassword;
+		display_entering();
+	}
+	
+	/* when user has entered password wrong three times */
+	if(failures == 3)
+	{
+		failures = 2;
+		
+		/* changes the state to locked state */
+		UserApp1_StateMachine = UserApp1SM_lockedState;
+		LCDCommand(LCD_CLEAR_CMD);
+	}
+}
+
+/* User entered right password */
+static void UserApp1SM_rightPassword(void)
+{
+	static int clockCounter = 0;
+   
+	if(clockCounter == 1000)
+  {
+    LedOn(GREEN);
+    clockCounter = 0;
+  }
+    
+	if(clockCounter == 500)
+  {
+    LedOff(GREEN);
+  }
+    
+  clockCounter++;
+  
+	/* checks for any button pressed to end cycle */
+	if(button_pressed())
+	{
+		/* changes the state to entering password */
+		UserApp1_StateMachine = UserApp1SM_enterPassword;
+		display_entering();
+	}
+	
+}
+/* Setting password */
 static void UserApp1SM_setPassword(void)
 {
 	static int point = 0;
@@ -266,21 +346,21 @@ static void UserApp1SM_setPassword(void)
 	if(WasButtonPressed(BUTTON0) && !IsButtonPressed(BUTTON0))
   {
 		ButtonAcknowledge(BUTTON0);
-		G_password[point] = 1;
+		G_intUserApp1password[point] = 1;
     point++;
 	}   
    
   if(WasButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON1))
   {
     ButtonAcknowledge(BUTTON1);
-    G_password[point] = 2;
+    G_intUserApp1password[point] = 2;
     point++;
   }
       
   if(WasButtonPressed(BUTTON2) && !IsButtonPressed(BUTTON2) )
   {
     ButtonAcknowledge(BUTTON2);
-    G_password[point] = 3;
+    G_intUserApp1password[point] = 3;
     point++;
   }
   
@@ -289,20 +369,13 @@ static void UserApp1SM_setPassword(void)
 	  ButtonAcknowledge(BUTTON3);
 	  point = 0;
 		
-		/* change the message on the board */
-		LCDCommand(LCD_CLEAR_CMD);
-		for(int i = 0; i < 1000; i++) {} //delay loop 
-		static u8 au8Message[] = "ENTERING A PASSWORD   ";
-		static u8 au8Message1[] = "1     2	    	3 ENTER"; 
-		LCDMessage(LINE1_START_ADDR, au8Message);
-		LCDMessage(LINE2_START_ADDR, au8Message1);
-		
 		/* change the state to entering password */
-		UserApp1_StateMachine = UserApp1SM_enterPassword;	
+		UserApp1_StateMachine = UserApp1SM_enterPassword;
+		display_entering();
   }
-}  /* end of set */ 
+}  /* end of UserApp1SM_setPassword */ 
 
-/* stops the user from trying any more passwords */
+/* Locked state */
 static void UserApp1SM_lockedState(void)
 {
 	static int locked_state_attempts = 1;  /* tracks how many times locked state has been entered */
@@ -310,37 +383,8 @@ static void UserApp1SM_lockedState(void)
 	int wait_time = (int) (-7.0833 * pow(locked_state_attempts,4) + 84.167 * pow(locked_state_attempts,3) - 322.92 * pow(locked_state_attempts,2) + 505.83 * locked_state_attempts - 250) * 1000;
   /* counts how long the system will remained in locked state */
 
-	/* Switch the time left in locked state */
-	if(clockCounter % 1000 == 0)
-	{
-		static u8 au8Message[] = "TRY AGAIN IN "; 
-		LCDMessage(LINE2_START_ADDR, au8Message);
-		
-		int first_digit = ((wait_time - clockCounter) / 100000) + 48; //first digit in ascii
-		int second_digit = ((wait_time - clockCounter) / 10000) + 48 - ((wait_time - clockCounter) / 100000) * 10;
-		int third_digit = ((wait_time - clockCounter) / 1000) + 48 - ((wait_time - clockCounter) / 10000) * 10 - ((wait_time - clockCounter) / 100000) * 100;
-		u8 au8Message1[] = {first_digit, second_digit, third_digit, 32, 32, 32 ,32 ,32 ,32}; /* 32 is blank space is ascii */
-		LCDMessage(LINE2_START_ADDR + 13, au8Message1);
-	}
+	display_locked(wait_time, clockCounter); /* Switch the time left in locked state */
 	
-	/* Switching from locked state to entering password */
-	if(clockCounter == wait_time)
-	{ 
-		locked_state_attempts++; 
-		clockCounter = 0;
-		
-		/* change the message on the board */
-		LCDCommand(LCD_CLEAR_CMD);
-		for(int i = 0; i < 1000; i++) {} //delay loop 
-		static u8 au8Message[] = "ENTERING A PASSWORD   ";
-		static u8 au8Message1[] = "1     2	    	3 ENTER"; 
-		LCDMessage(LINE1_START_ADDR, au8Message);
-		LCDMessage(LINE2_START_ADDR, au8Message1);
-		
-		/* change the state to entering password */
-		UserApp1_StateMachine = UserApp1SM_enterPassword;	
-	}
-		
 	if(clockCounter % 1000 == 0 & clockCounter <= 5000)
   {		
     LedOff(WHITE);
@@ -371,6 +415,17 @@ static void UserApp1SM_lockedState(void)
   }
 	
 	clockCounter++;
+	
+	/* Switching from locked state to entering password */
+	if(clockCounter == wait_time)
+	{ 
+		locked_state_attempts++; 
+		clockCounter = 0;
+		
+		/* change the state to entering password */
+		UserApp1_StateMachine = UserApp1SM_enterPassword;	
+		display_entering();
+	}
 }
 	
 	

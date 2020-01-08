@@ -37,7 +37,14 @@ Function Declarations
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Public functions                                                                                                   */
 /*--------------------------------------------------------------------------------------------------------------------*/
-void reset(int* reset, int user_input[]);
+void display_setting(void);
+void display_entering(void);
+void display_right(void);
+void display_wrong(void);
+void display_locked(int wait_time, int clockCounter);
+
+void reset(volatile int array[]);
+int button_pressed(void); 
 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -59,6 +66,8 @@ static void UserApp1SM_Error(void);
 
 static void UserApp1SM_setPassword(void);
 static void UserApp1SM_enterPassword(void); 
+static void UserApp1SM_wrongPassword(void); 
+static void UserApp1SM_rightPassword(void); 
 static void UserApp1SM_lockedState(void);       
 
 
