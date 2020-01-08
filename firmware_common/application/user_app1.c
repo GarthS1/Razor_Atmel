@@ -23,6 +23,7 @@ Runs current task state.  Should only be called once in main loop.
 **********************************************************************************************************************/
 
 #include "configuration.h"
+#include <math.h>
 
 /***********************************************************************************************************************
 Global variable definitions with scope across entire project.
@@ -306,19 +307,26 @@ static void UserApp1SM_lockedState(void)
 {
 	static int locked_state_attempts = 1;  /* tracks how many times locked state has been entered */
 	static int clockCounter = 0; /*counter for blinking */
-	int wait_time = locked_state_attempts * 10000;  /* counts how long the system will remained in locked state */
-	
-	if(clockCounter % 1000)
+	int wait_time = (int) (-7.0833 * pow(locked_state_attempts,4) + 84.167 * pow(locked_state_attempts,3) - 322.92 * pow(locked_state_attempts,2) + 505.83 * locked_state_attempts - 250) * 1000;
+  /* counts how long the system will remained in locked state */
+
+	/* Switch the time left in locked state */
+	if(clockCounter % 1000 == 0)
 	{
-		static u8 au8Message1[] = "TRY AGAIN IN "; 
-		LCDMessage(LINE2_START_ADDR, au8Message1);
-		LCDMessage(LINE2_START_ADDR + 13, (u8*) ((wait_time - clockCounter) / 10000));
-		LCDMessage(LINE2_START_ADDR + 14, (u8*) ((wait_time - clockCounter) / 10000));
+		static u8 au8Message[] = "TRY AGAIN IN "; 
+		LCDMessage(LINE2_START_ADDR, au8Message);
+		
+		int first_digit = ((wait_time - clockCounter) / 100000) + 48; //first digit in ascii
+		int second_digit = ((wait_time - clockCounter) / 10000) + 48 - ((wait_time - clockCounter) / 100000) * 10;
+		int third_digit = ((wait_time - clockCounter) / 1000) + 48 - ((wait_time - clockCounter) / 10000) * 10 - ((wait_time - clockCounter) / 100000) * 100;
+		u8 au8Message1[] = {first_digit, second_digit, third_digit, 32, 32, 32 ,32 ,32 ,32}; /* 32 is blank space is ascii */
+		LCDMessage(LINE2_START_ADDR + 13, au8Message1);
 	}
-			
+	
+	/* Switching from locked state to entering password */
 	if(clockCounter == wait_time)
-	{
-		locked_state_attempts++;
+	{ 
+		locked_state_attempts++; 
 		clockCounter = 0;
 		
 		/* change the message on the board */
