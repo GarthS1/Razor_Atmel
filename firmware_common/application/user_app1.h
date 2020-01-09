@@ -41,7 +41,9 @@ void display_setting(void);
 void display_entering(void);
 void display_right(void);
 void display_wrong(void);
-void display_locked(int wait_time, int clockCounter);
+void display_locked(void);
+void change_time(int wait_time, int clockCounter);
+
 
 void reset(volatile int array[]);
 int button_pressed(void); 

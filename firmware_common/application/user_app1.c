@@ -100,18 +100,18 @@ void display_wrong(void)
 } /* end of display_wrong */
 
 /* Displays the LCD for the locked state */
-void display_locked(int wait_time, int clockCounter)
+void display_locked(void)
 {
-	if(clockCounter == 0)
-	{
-		LCDCommand(LCD_CLEAR_CMD);
-		static u8 au8Message1[] = "LOCKED"; 
-		LCDMessage(LINE1_START_ADDR, au8Message1);
-		static u8 au8Message[] = "TRY AGAIN IN "; 
-		LCDMessage(LINE2_START_ADDR, au8Message);
-	}
+	LCDCommand(LCD_CLEAR_CMD);
+	static u8 au8Message1[] = "LOCKED"; 
+	LCDMessage(LINE1_START_ADDR, au8Message1);
+	static u8 au8Message[] = "TRY AGAIN IN "; 
+	LCDMessage(LINE2_START_ADDR, au8Message);
+} /* end of display_locked */
 	
-	if(clockCounter % 1000 == 0 && clockCounter != 0)
+void change_time(int wait_time, int clockCounter)
+{
+	if(clockCounter % 1000 == 0)
 	{
 		int first_digit = ((wait_time - clockCounter) / 100000) + 48;
 		int second_digit = ((wait_time - clockCounter) / 10000) + 48 - ((wait_time - clockCounter) / 100000) * 10;
@@ -119,7 +119,7 @@ void display_locked(int wait_time, int clockCounter)
 		u8 au8Message2[] = {first_digit, second_digit, third_digit, 32, 32, 32 ,32 ,32 ,32}; /* 32 is blank space is ascii */
 		LCDMessage(LINE2_START_ADDR + 13, au8Message2);
 	}
-} /* end of display_locked */
+} /* end of change_time*/
 
 /* Resets array */
 void reset(volatile int array[])
@@ -290,16 +290,6 @@ static void UserApp1SM_wrongPassword(void)
     
 	clockCounter++;
 	
-	/* checks for any button pressed to end cycle */
-	if(button_pressed() && failures != 3)
-	{
-		failures++;
-		
-		/* changes the state to entering password */
-		UserApp1_StateMachine = UserApp1SM_enterPassword;
-		display_entering();
-	}
-	
 	/* when user has entered password wrong three times */
 	if(failures == 3)
 	{
@@ -307,7 +297,17 @@ static void UserApp1SM_wrongPassword(void)
 		
 		/* changes the state to locked state */
 		UserApp1_StateMachine = UserApp1SM_lockedState;
-		LCDCommand(LCD_CLEAR_CMD);
+		display_locked();
+	}
+	
+	/* checks for any button pressed to end cycle */
+	if(button_pressed() == 1)
+	{
+		failures++;
+		
+		/* changes the state to entering password */
+		UserApp1_StateMachine = UserApp1SM_enterPassword;
+		display_entering();
 	}
 }
 
@@ -383,7 +383,7 @@ static void UserApp1SM_lockedState(void)
 	int wait_time = (int) (-7.0833 * pow(locked_state_attempts,4) + 84.167 * pow(locked_state_attempts,3) - 322.92 * pow(locked_state_attempts,2) + 505.83 * locked_state_attempts - 250) * 1000;
   /* counts how long the system will remained in locked state */
 
-	display_locked(wait_time, clockCounter); /* Switch the time left in locked state */
+	change_time(wait_time, clockCounter); /* Switch the time left in locked state */
 	
 	if(clockCounter % 1000 == 0 & clockCounter <= 5000)
   {		
