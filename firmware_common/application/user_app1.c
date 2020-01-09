@@ -103,9 +103,9 @@ void display_wrong(void)
 void display_locked(void)
 {
 	LCDCommand(LCD_CLEAR_CMD);
+	static u8 au8Message[] = "TRY AGAIN IN "; 
 	static u8 au8Message1[] = "LOCKED"; 
 	LCDMessage(LINE1_START_ADDR, au8Message1);
-	static u8 au8Message[] = "TRY AGAIN IN "; 
 	LCDMessage(LINE2_START_ADDR, au8Message);
 } /* end of display_locked */
 	
@@ -259,7 +259,7 @@ static void UserApp1SM_enterPassword(void)
 		LedOff(RED);
 		
 		UserApp1_StateMachine = UserApp1SM_rightPassword;
-		display_right();
+		display_right(); 
     for(int i = 0; i < 10; i++)
     {
 			if(user_input[i] != G_intUserApp1password[i]) /* checks that password matches */
@@ -301,7 +301,7 @@ static void UserApp1SM_wrongPassword(void)
 	}
 	
 	/* checks for any button pressed to end cycle */
-	if(button_pressed() == 1)
+	if(button_pressed())
 	{
 		failures++;
 		
@@ -383,7 +383,7 @@ static void UserApp1SM_lockedState(void)
 	int wait_time = (int) (-7.0833 * pow(locked_state_attempts,4) + 84.167 * pow(locked_state_attempts,3) - 322.92 * pow(locked_state_attempts,2) + 505.83 * locked_state_attempts - 250) * 1000;
   /* counts how long the system will remained in locked state */
 
-	change_time(wait_time, clockCounter); /* Switch the time left in locked state */
+	//change_time(wait_time, clockCounter); /* Switch the time left in locked state */
 	
 	if(clockCounter % 1000 == 0 & clockCounter <= 5000)
   {		
