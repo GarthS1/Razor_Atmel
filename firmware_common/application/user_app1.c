@@ -33,6 +33,7 @@ All Global variable names shall start with "G_UserApp1"
 volatile u32 G_u32UserApp1Flags;                       /* Global state flags */
 volatile int G_intUserApp1password[11];                /* Correct password */
 volatile int G_intUserApp1sound; 											 /* Toggle for sound */ 
+volatile int G_intUserApp1failures; 									 /* Counter for failed attempts */
 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -62,6 +63,8 @@ Function Definitions
 /* Displays the LCD for setting password */
 void display_setting(void)
 {
+	reset(G_intUserApp1password); /* resets the password */ 
+	
 	LCDCommand(LCD_CLEAR_CMD);
 	static u8 au8Message[] = "SETTING A PASSWORD   "; 
 	static u8 au8Message1[] = "1     2	    	3   SET"; 
@@ -108,7 +111,8 @@ void display_locked(void)
 	LCDMessage(LINE1_START_ADDR, au8Message1);
 	LCDMessage(LINE2_START_ADDR, au8Message);
 } /* end of display_locked */
-	
+
+/* Changes the time left in locked state */
 void change_time(int wait_time, int clockCounter)
 {
 	if(clockCounter % 1000 == 0)
@@ -287,7 +291,6 @@ static void UserApp1SM_enterPassword(void)
 static void UserApp1SM_wrongPassword(void)
 {
 	static int clockCounter = 0; /* counter for blinking */ 
-	static int failures = 1; /* counter for failures */
 	
 	if(clockCounter == 1000)
   {
@@ -302,9 +305,9 @@ static void UserApp1SM_wrongPassword(void)
 	clockCounter++;
 	
 	/* when user has entered password wrong three times */
-	if(failures == 3)
+	if(G_intUserApp1failures == 3)
 	{
-		failures = 2;
+		G_intUserApp1failures = 2;
 		
 		/* changes the state to locked state */
 		UserApp1_StateMachine = UserApp1SM_lockedState;
@@ -314,7 +317,7 @@ static void UserApp1SM_wrongPassword(void)
 	/* checks for any button pressed to end cycle */
 	if(button_pressed())
 	{
-		failures++;
+		G_intUserApp1failures++;
 		
 		/* changes the state to entering password */
 		UserApp1_StateMachine = UserApp1SM_enterPassword;
@@ -326,6 +329,7 @@ static void UserApp1SM_wrongPassword(void)
 static void UserApp1SM_rightPassword(void)
 {
 	static int clockCounter = 0;
+	G_intUserApp1failures = 0; /* resets failure counter */
    
 	if(clockCounter == 1000)
   {
@@ -339,10 +343,22 @@ static void UserApp1SM_rightPassword(void)
   }
     
   clockCounter++;
+	
+	/* checks for any button 3 pressed to return to enter password*/
+  if(WasButtonPressed(BUTTON1) && !IsButtonPressed(BUTTON1))
+  {
+		ButtonAcknowledge(BUTTON1);
+		
+		/* changes the state to entering password */
+		UserApp1_StateMachine = UserApp1SM_setPassword;
+		display_setting();
+	}
   
-	/* checks for any button pressed to end cycle */
-	if(button_pressed())
-	{
+	/* checks for any button 3 pressed to return to enter password*/
+  if(WasButtonPressed(BUTTON3) && !IsButtonPressed(BUTTON3))
+  {
+		ButtonAcknowledge(BUTTON3);
+		
 		/* changes the state to entering password */
 		UserApp1_StateMachine = UserApp1SM_enterPassword;
 		display_entering();
