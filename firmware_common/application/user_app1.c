@@ -255,19 +255,30 @@ static void UserApp1SM_enterPassword(void)
   {
 		ButtonAcknowledge(BUTTON3);
 		point = 0;
+		int right = 1; /* tracks if password is correct */
+		
 		LedOff(GREEN);
 		LedOff(RED);
 		
-		UserApp1_StateMachine = UserApp1SM_rightPassword;
-		display_right(); 
     for(int i = 0; i < 10; i++)
     {
 			if(user_input[i] != G_intUserApp1password[i]) /* checks that password matches */
       {
-				UserApp1_StateMachine = UserApp1SM_wrongPassword;
-				display_wrong();
+				right = 0;
 			}
 		}
+		
+		if(right)
+		{
+			UserApp1_StateMachine = UserApp1SM_rightPassword;
+			display_right(); 
+		}
+		else
+		{
+			UserApp1_StateMachine = UserApp1SM_wrongPassword;
+			display_wrong();
+		}
+		
 		reset(user_input);
   }
 } /* end of enter */	
@@ -383,7 +394,7 @@ static void UserApp1SM_lockedState(void)
 	int wait_time = (int) (-7.0833 * pow(locked_state_attempts,4) + 84.167 * pow(locked_state_attempts,3) - 322.92 * pow(locked_state_attempts,2) + 505.83 * locked_state_attempts - 250) * 1000;
   /* counts how long the system will remained in locked state */
 
-	//change_time(wait_time, clockCounter); /* Switch the time left in locked state */
+	change_time(wait_time, clockCounter); /* Switch the time left in locked state */
 	
 	if(clockCounter % 1000 == 0 & clockCounter <= 5000)
   {		
@@ -415,6 +426,12 @@ static void UserApp1SM_lockedState(void)
   }
 	
 	clockCounter++;
+	
+	/*Disregard any button pressed in this state */
+  ButtonAcknowledge(BUTTON0);
+  ButtonAcknowledge(BUTTON1);
+  ButtonAcknowledge(BUTTON2);
+  ButtonAcknowledge(BUTTON3);
 	
 	/* Switching from locked state to entering password */
 	if(clockCounter == wait_time)
