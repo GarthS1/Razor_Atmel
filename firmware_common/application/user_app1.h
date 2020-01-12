@@ -38,15 +38,18 @@ Function Declarations
 /* Public functions                                                                                                   */
 /*--------------------------------------------------------------------------------------------------------------------*/
 void display_setting(void);
+void display_sound(void);
 void display_entering(void);
 void display_right(void);
 void display_wrong(void);
 void display_locked(void);
 void change_time(int wait_time, int clockCounter);
-
-
 void reset(volatile int array[]);
 int button_pressed(void); 
+void play_button(void);
+void play_enter(void);
+void play_wrong(int time);
+void play_correct(int time);
 
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -65,7 +68,7 @@ void UserApp1RunActiveState(void);
 State Machine Declarations
 ***********************************************************************************************************************/  
 static void UserApp1SM_Error(void); 
-
+static void UserApp1SM_sound(void);
 static void UserApp1SM_setPassword(void);
 static void UserApp1SM_enterPassword(void); 
 static void UserApp1SM_wrongPassword(void); 
