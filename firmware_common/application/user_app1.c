@@ -184,23 +184,52 @@ void play_enter(void)
 	}
 } /* end of play_enter */
 
-/* Play correct sound for password some code refrenced from http://embeddedinembedded.com/?page_id=173*/ 
+/* Play correct sound for password some code refrenced from http://embeddedinembedded.com/?page_id=173 */
 void play_correct(int time)
 {
-	static u16 au16NotesRight[]    = {E4, E4, F4, G4, NO};
-  static u16 au16DurationRight[] = {QN, QN, QN, QN};
-  static u8 u8CurrentIndex = 0;
-	
-	if( )
+	if(G_intUserApp1sound)
 	{
-		u16CurrentDurationRight = au16DurationRight[u8CurrentIndex] - REGULAR_NOTE_ADJUSTMENT;
-    u16NoteSilentDurationRight = REGULAR_NOTE_ADJUSTMENT;
-    bNoteActiveNextRight = FALSE;
-	       u8IndexRight++;
-        if(u8IndexRight == sizeof(au16NotesRight) / sizeof(u16) )
-        {
-          u8IndexRight = 0;
-        }
+		static u16 au16NotesRight[]    = {E4, E4, F4, G4, G4, F4, E4, D4, NO};
+		static u16 au16DurationRight[] = {QN, QN, QN, QN, QN, QN, QN, QN, FN};
+		
+		static u8 currentIndex = 0;
+		static u32 u32RightTimer = 0;
+		static u16 u16CurrentDurationRight = 0;
+		static u16 u16NoteSilentDurationRight = 0;
+		static bool activeNextRight = TRUE ;
+		
+		if(IsTimeUp(&u32RightTimer, (u32)u16CurrentDurationRight))
+		{
+			u32RightTimer = time;
+			
+			if(activeNextRight)
+			{
+				u16CurrentDurationRight = au16DurationRight[currentIndex] - REGULAR_NOTE_ADJUSTMENT;
+        u16NoteSilentDurationRight = REGULAR_NOTE_ADJUSTMENT;
+        activeNextRight = FALSE;
+			}
+			
+			if(au16NotesRight[currentIndex] != NO)
+      {
+        PWMAudioSetFrequency(BUZZER1, au16NotesRight[currentIndex]);
+        PWMAudioOn(BUZZER1);
+      }
+      else
+      {                
+        PWMAudioOff(BUZZER1);
+      }
+    }
+		else
+		{
+      /* No active note */
+      PWMAudioOff(BUZZER1);
+      u32RightTimer = time;
+      u16CurrentDurationRight = u16NoteSilentDurationRight;
+      activeNextRight = TRUE;
+ 
+      currentIndex++;
+		}
+	}		
 } /* end of play_correct */
 
 /* Play wrong sound for password */ 
