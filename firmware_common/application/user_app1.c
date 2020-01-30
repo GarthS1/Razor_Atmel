@@ -184,27 +184,30 @@ void play_enter(void)
 	}
 } /* end of play_enter */
 
-/* Play correct sound for password some code refrenced from http://embeddedinembedded.com/?page_id=173 */
+/* Play correct sound for password */
 void play_correct(int time)
 {
 	if(G_intUserApp1sound)
 	{
-		static u16 au16NotesRight[] = {E4, E4, F4, G4, G4, F4, E4, D4, NO};
+		static u16 au16NotesRight[] = {E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, E4, D4, D4, D5, 
+																	 E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, D4, C4, C4, D5,
+																	 D4, D4, E4, C4, D4, F4, E4, C4, D4, F4, E4, D4, C4, D4, G4, D5,
+																	 E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, E4, D4, C4, D5, NO};
 		static int rightNote = 0; /* tracks the current note being played */
-		if(time % 250 == 0)
+		if(time % 500 == 0 && (au16NotesRight[rightNote] != NO || au16NotesRight[rightNote] != D5) )
 		{
 			PWMAudioSetFrequency(BUZZER1, au16NotesRight[rightNote]);
       PWMAudioOn(BUZZER1);
 			rightNote++;
     }
+		
+		if(time % 500 == 250 && au16NotesRight[rightNote] != D5)
+		{
+			PWMAudioOff(BUZZER1);
+		}
 	}		
 } /* end of play_correct */
 
-/* Play wrong sound for password */ 
-void play_wrong(int time)
-{
-	
-} /* end of play_wrong */
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Protected functions                                                                                                */
@@ -377,7 +380,6 @@ static void UserApp1SM_wrongPassword(void)
 {
 	static int clockCounter = 0; /* counter for blinking */ 
 	
-	play_wrong(clockCounter);
 	play_button(); 
 	
 	if(clockCounter % 1000 == 0)
