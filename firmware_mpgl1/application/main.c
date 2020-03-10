@@ -70,7 +70,7 @@ void main(void)
   SdCardInitialize();
 
   /* Application initialization */
-  BoardTestInitialize();
+  //BoardTestInitialize();
   UserApp1Initialize();
   UserApp2Initialize();
   UserApp3Initialize();
@@ -100,7 +100,7 @@ void main(void)
     SdCardRunActiveState();
 
     /* Applications */
-    BoardTestRunActiveState();
+    //BoardTestRunActiveState();
     UserApp1RunActiveState();
     UserApp2RunActiveState();
     UserApp3RunActiveState();

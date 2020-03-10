@@ -19,3 +19,15 @@ Debug/
 =======
 *.TMP
 >>>>>>> c080c694e6eb3b5db5c649699ab09d322b1ac0ae
+*.crun
+*.dbgdt
+*.ps1
+*.xcl
+*.dnx
+*.wsdt
+*.log
+*.dep
+*.dep
+*.ewd
+*.ewp
+*.bat
